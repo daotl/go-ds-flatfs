@@ -1,3 +1,9 @@
+// Copyright for portions of this fork are held by [Juan Batiz-Benet, 2016] as
+// part of the original go-ds-flatfs project. All other copyright for
+// this fork are held by [The BDWare Authors, 2020]. All rights reserved.
+// Use of this source code is governed by MIT license that can be
+// found in the LICENSE file.
+
 package main
 
 import (
@@ -5,7 +11,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/ipfs/go-ds-flatfs"
+	"github.com/bdware/go-ds-flatfs"
 )
 
 // To convert from the old format to a new format with a different

@@ -1,3 +1,9 @@
+// Copyright for portions of this fork are held by [Juan Batiz-Benet, 2016] as
+// part of the original go-ds-flatfs project. All other copyright for
+// this fork are held by [The BDWare Authors, 2020]. All rights reserved.
+// Use of this source code is governed by MIT license that can be
+// found in the LICENSE file.
+
 package flatfs_test
 
 import (
@@ -11,8 +17,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ipfs/go-datastore"
-	flatfs "github.com/ipfs/go-ds-flatfs"
+	"github.com/bdware/go-datastore/key"
+	flatfs "github.com/bdware/go-ds-flatfs"
 )
 
 func TestMove(t *testing.T) {
@@ -194,7 +200,7 @@ func rmEmptyDatastore(t *testing.T, dir string) {
 	}
 }
 
-func populateDatastore(t *testing.T, dir string) ([]datastore.Key, [][]byte) {
+func populateDatastore(t *testing.T, dir string) ([]key.Key, [][]byte) {
 	ds, err := flatfs.Open(dir, false)
 	if err != nil {
 		t.Fatalf("Open fail: %v\n", err)
@@ -203,14 +209,14 @@ func populateDatastore(t *testing.T, dir string) ([]datastore.Key, [][]byte) {
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	var blocks [][]byte
-	var keys []datastore.Key
+	var keys []key.Key
 	for i := 0; i < 256; i++ {
 		blk := make([]byte, 1000)
 		r.Read(blk)
 		blocks = append(blocks, blk)
 
-		key := "X" + base32.StdEncoding.EncodeToString(blk[:8])
-		keys = append(keys, datastore.NewKey(key))
+		k := "X" + base32.StdEncoding.EncodeToString(blk[:8])
+		keys = append(keys, key.NewStrKey(k))
 		err := ds.Put(keys[i], blocks[i])
 		if err != nil {
 			t.Fatalf("Put fail: %v\n", err)
@@ -220,7 +226,7 @@ func populateDatastore(t *testing.T, dir string) ([]datastore.Key, [][]byte) {
 	return keys, blocks
 }
 
-func checkKeys(t *testing.T, dir string, keys []datastore.Key, blocks [][]byte) {
+func checkKeys(t *testing.T, dir string, keys []key.Key, blocks [][]byte) {
 	ds, err := flatfs.Open(dir, false)
 	if err != nil {
 		t.Fatalf("Open fail: %v\n", err)

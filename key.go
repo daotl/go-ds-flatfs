@@ -1,13 +1,19 @@
+// Copyright for portions of this fork are held by [Juan Batiz-Benet, 2016] as
+// part of the original go-ds-flatfs project. All other copyright for
+// this fork are held by [The BDWare Authors, 2020]. All rights reserved.
+// Use of this source code is governed by MIT license that can be
+// found in the LICENSE file.
+
 package flatfs
 
 import (
-	"github.com/ipfs/go-datastore"
+	"github.com/bdware/go-datastore/key"
 )
 
 // keyIsValid returns true if the key is valid for flatfs.
 // Allows keys that match [0-9A-Z+-_=].
-func keyIsValid(key datastore.Key) bool {
-	ks := key.String()
+func keyIsValid(k key.Key) bool {
+	ks := k.String()
 	if len(ks) < 2 || ks[0] != '/' {
 		return false
 	}

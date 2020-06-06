@@ -1,9 +1,15 @@
+// Copyright for portions of this fork are held by [Juan Batiz-Benet, 2016] as
+// part of the original go-ds-flatfs project. All other copyright for
+// this fork are held by [The BDWare Authors, 2020]. All rights reserved.
+// Use of this source code is governed by MIT license that can be
+// found in the LICENSE file.
+
 package flatfs
 
 import (
 	"testing"
 
-	"github.com/ipfs/go-datastore"
+	"github.com/bdware/go-datastore/key"
 )
 
 var (
@@ -21,14 +27,14 @@ var (
 )
 
 func TestKeyIsValid(t *testing.T) {
-	for _, key := range validKeys {
-		k := datastore.NewKey(key)
+	for _, kstr := range validKeys {
+		k := key.NewStrKey(kstr)
 		if !keyIsValid(k) {
 			t.Errorf("expected key %s to be valid", k)
 		}
 	}
-	for _, key := range invalidKeys {
-		k := datastore.NewKey(key)
+	for _, kstr := range invalidKeys {
+		k := key.NewStrKey(kstr)
 		if keyIsValid(k) {
 			t.Errorf("expected key %s to be invalid", k)
 		}

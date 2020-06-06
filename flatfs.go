@@ -1,3 +1,9 @@
+// Copyright for portions of this fork are held by [Juan Batiz-Benet, 2016] as
+// part of the original go-ds-flatfs project. All other copyright for
+// this fork are held by [The BDWare Authors, 2020]. All rights reserved.
+// Use of this source code is governed by MIT license that can be
+// found in the LICENSE file.
+
 // Package flatfs is a Datastore implementation that stores all
 // objects in a two-level directory structure in the local file
 // system, regardless of the hierarchy of the keys.
@@ -17,8 +23,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/query"
+	"github.com/bdware/go-datastore"
+	"github.com/bdware/go-datastore/key"
+	"github.com/bdware/go-datastore/query"
 	"github.com/jbenet/goprocess"
 
 	logging "github.com/ipfs/go-log"
@@ -156,11 +163,11 @@ type opT int
 
 // op wraps useful arguments of write operations
 type op struct {
-	typ  opT           // operation type
-	key  datastore.Key // datastore key. Mandatory.
-	tmp  string        // temp file path
-	path string        // file path
-	v    []byte        // value
+	typ  opT     // operation type
+	key  key.Key // datastore key. Mandatory.
+	tmp  string  // temp file path
+	path string  // file path
+	v    []byte  // value
 }
 
 type opMap struct {
@@ -301,24 +308,27 @@ func (fs *Datastore) ShardStr() string {
 	return fs.shardStr
 }
 
-func (fs *Datastore) encode(key datastore.Key) (dir, file string) {
-	noslash := key.String()[1:]
+func (fs *Datastore) encode(k key.Key) (dir, file string) {
+	if k.KeyType() != key.KeyTypeString {
+		panic(key.ErrKeyTypeNotSupported)
+	}
+	noslash := k.String()[1:]
 	dir = filepath.Join(fs.path, fs.getDir(noslash))
 	file = filepath.Join(dir, noslash+extension)
 	return dir, file
 }
 
-func (fs *Datastore) decode(file string) (key datastore.Key, ok bool) {
+func (fs *Datastore) decode(file string) (k key.Key, ok bool) {
 	if !strings.HasSuffix(file, extension) {
 		// We expect random files like "put-". Log when we encounter
 		// others.
 		if !strings.HasPrefix(file, "put-") {
 			log.Warnw("failed to decode flatfs filename", "file", file)
 		}
-		return datastore.Key{}, false
+		return nil, false
 	}
 	name := file[:len(file)-len(extension)]
-	return datastore.NewKey(name), true
+	return key.RawStrKey(name), true
 }
 
 func (fs *Datastore) makeDir(dir string) error {
@@ -393,9 +403,12 @@ func (fs *Datastore) renameAndUpdateDiskUsage(tmpPath, path string) error {
 // one arrived slightly later than the other. In the case of a
 // concurrent Put and a Delete operation, we cannot guarantee which one
 // will win.
-func (fs *Datastore) Put(key datastore.Key, value []byte) error {
-	if !keyIsValid(key) {
-		return fmt.Errorf("when putting '%q': %v", key, ErrInvalidKey)
+func (fs *Datastore) Put(k key.Key, value []byte) error {
+	if k.KeyType() != key.KeyTypeString {
+		return key.ErrKeyTypeNotSupported
+	}
+	if !keyIsValid(k) {
+		return fmt.Errorf("when putting '%q': %v", k, ErrInvalidKey)
 	}
 
 	fs.shutdownLock.RLock()
@@ -406,13 +419,16 @@ func (fs *Datastore) Put(key datastore.Key, value []byte) error {
 
 	_, err := fs.doWriteOp(&op{
 		typ: opPut,
-		key: key,
+		key: k,
 		v:   value,
 	})
 	return err
 }
 
-func (fs *Datastore) Sync(prefix datastore.Key) error {
+func (fs *Datastore) Sync(prefix key.Key) error {
+	if prefix.KeyType() != key.KeyTypeString {
+		return key.ErrKeyTypeNotSupported
+	}
 	fs.shutdownLock.RLock()
 	defer fs.shutdownLock.RUnlock()
 	if fs.shutdown {
@@ -470,9 +486,13 @@ func (fs *Datastore) doWriteOp(oper *op) (done bool, err error) {
 	return err == nil, err
 }
 
-func (fs *Datastore) doPut(key datastore.Key, val []byte) error {
+func (fs *Datastore) doPut(k key.Key, val []byte) error {
 
-	dir, path := fs.encode(key)
+	if k.KeyType() != key.KeyTypeString {
+		return key.ErrKeyTypeNotSupported
+	}
+
+	dir, path := fs.encode(k)
 	if err := fs.makeDir(dir); err != nil {
 		return err
 	}
@@ -521,7 +541,7 @@ func (fs *Datastore) doPut(key datastore.Key, val []byte) error {
 	return nil
 }
 
-func (fs *Datastore) putMany(data map[datastore.Key][]byte) error {
+func (fs *Datastore) putMany(data map[string][]byte) error {
 	fs.shutdownLock.RLock()
 	defer fs.shutdownLock.RUnlock()
 	if fs.shutdown {
@@ -529,7 +549,7 @@ func (fs *Datastore) putMany(data map[datastore.Key][]byte) error {
 	}
 
 	type putManyOp struct {
-		key     datastore.Key
+		key     key.Key
 		file    *os.File
 		dstPath string
 		srcPath string
@@ -569,8 +589,9 @@ func (fs *Datastore) putMany(data map[datastore.Key][]byte) error {
 		return nil
 	}
 
-	for key, value := range data {
-		dir, path := fs.encode(key)
+	for kstr, value := range data {
+		k := key.RawStrKey(kstr)
+		dir, path := fs.encode(k)
 		if err := fs.makeDirNoSync(dir); err != nil {
 			return err
 		}
@@ -593,7 +614,7 @@ func (fs *Datastore) putMany(data map[datastore.Key][]byte) error {
 
 		// Do this _first_ so we close it if writing fails.
 		files = append(files, putManyOp{
-			key:     key,
+			key:     k,
 			file:    tmp,
 			dstPath: path,
 			srcPath: tmp.Name(),
@@ -644,13 +665,16 @@ func (fs *Datastore) putMany(data map[datastore.Key][]byte) error {
 	return nil
 }
 
-func (fs *Datastore) Get(key datastore.Key) (value []byte, err error) {
+func (fs *Datastore) Get(k key.Key) (value []byte, err error) {
+	if k.KeyType() != key.KeyTypeString {
+		return nil, key.ErrKeyTypeNotSupported
+	}
 	// Can't exist in datastore.
-	if !keyIsValid(key) {
+	if !keyIsValid(k) {
 		return nil, datastore.ErrNotFound
 	}
 
-	_, path := fs.encode(key)
+	_, path := fs.encode(k)
 	data, err := readFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -662,13 +686,16 @@ func (fs *Datastore) Get(key datastore.Key) (value []byte, err error) {
 	return data, nil
 }
 
-func (fs *Datastore) Has(key datastore.Key) (exists bool, err error) {
+func (fs *Datastore) Has(k key.Key) (exists bool, err error) {
+	if k.KeyType() != key.KeyTypeString {
+		return false, key.ErrKeyTypeNotSupported
+	}
 	// Can't exist in datastore.
-	if !keyIsValid(key) {
+	if !keyIsValid(k) {
 		return false, nil
 	}
 
-	_, path := fs.encode(key)
+	_, path := fs.encode(k)
 	switch _, err := os.Stat(path); {
 	case err == nil:
 		return true, nil
@@ -679,13 +706,16 @@ func (fs *Datastore) Has(key datastore.Key) (exists bool, err error) {
 	}
 }
 
-func (fs *Datastore) GetSize(key datastore.Key) (size int, err error) {
+func (fs *Datastore) GetSize(k key.Key) (size int, err error) {
+	if k.KeyType() != key.KeyTypeString {
+		return -1, key.ErrKeyTypeNotSupported
+	}
 	// Can't exist in datastore.
-	if !keyIsValid(key) {
+	if !keyIsValid(k) {
 		return -1, datastore.ErrNotFound
 	}
 
-	_, path := fs.encode(key)
+	_, path := fs.encode(k)
 	switch s, err := os.Stat(path); {
 	case err == nil:
 		return int(s.Size()), nil
@@ -699,9 +729,12 @@ func (fs *Datastore) GetSize(key datastore.Key) (size int, err error) {
 // Delete removes a key/value from the Datastore. Please read
 // the Put() explanation about the handling of concurrent write
 // operations to the same key.
-func (fs *Datastore) Delete(key datastore.Key) error {
+func (fs *Datastore) Delete(k key.Key) error {
+	if k.KeyType() != key.KeyTypeString {
+		return key.ErrKeyTypeNotSupported
+	}
 	// Can't exist in datastore.
-	if !keyIsValid(key) {
+	if !keyIsValid(k) {
 		return nil
 	}
 
@@ -713,7 +746,7 @@ func (fs *Datastore) Delete(key datastore.Key) error {
 
 	_, err := fs.doWriteOp(&op{
 		typ: opDelete,
-		key: key,
+		key: k,
 		v:   nil,
 	})
 	return err
@@ -721,8 +754,12 @@ func (fs *Datastore) Delete(key datastore.Key) error {
 
 // This function always runs within an opLock for the given
 // key, and not concurrently.
-func (fs *Datastore) doDelete(key datastore.Key) error {
-	_, path := fs.encode(key)
+func (fs *Datastore) doDelete(k key.Key) error {
+	if k.KeyType() != key.KeyTypeString {
+		return key.ErrKeyTypeNotSupported
+	}
+
+	_, path := fs.encode(k)
 
 	fSize := fileSize(path)
 
@@ -745,7 +782,13 @@ func (fs *Datastore) doDelete(key datastore.Key) error {
 }
 
 func (fs *Datastore) Query(q query.Query) (query.Results, error) {
-	prefix := datastore.NewKey(q.Prefix).String()
+	if q.Prefix == nil {
+		q.Prefix = key.QueryStrKey("/")
+	}
+	if q.Prefix.KeyType() != key.KeyTypeString {
+		return nil, key.ErrKeyTypeNotSupported
+	}
+	prefix := key.Clean(q.Prefix).String()
 	if prefix != "/" {
 		// This datastore can't include keys with multiple components.
 		// Therefore, it's always correct to return an empty result when
@@ -1147,7 +1190,7 @@ func (fs *Datastore) walk(path string, qrb *query.ResultBuilder) error {
 		}
 
 		var result query.Result
-		result.Key = key.String()
+		result.Key = key
 		if !qrb.Query.KeysOnly {
 			value, err := readFile(filepath.Join(path, fn))
 			if err != nil {
@@ -1197,31 +1240,37 @@ func (fs *Datastore) Close() error {
 }
 
 type flatfsBatch struct {
-	puts    map[datastore.Key][]byte
-	deletes map[datastore.Key]struct{}
+	puts    map[string][]byte
+	deletes map[string]struct{}
 
 	ds *Datastore
 }
 
 func (fs *Datastore) Batch() (datastore.Batch, error) {
 	return &flatfsBatch{
-		puts:    make(map[datastore.Key][]byte),
-		deletes: make(map[datastore.Key]struct{}),
+		puts:    make(map[string][]byte),
+		deletes: make(map[string]struct{}),
 		ds:      fs,
 	}, nil
 }
 
-func (bt *flatfsBatch) Put(key datastore.Key, val []byte) error {
-	if !keyIsValid(key) {
-		return fmt.Errorf("when putting '%q': %v", key, ErrInvalidKey)
+func (bt *flatfsBatch) Put(k key.Key, val []byte) error {
+	if k.KeyType() != key.KeyTypeString {
+		return key.ErrKeyTypeNotSupported
 	}
-	bt.puts[key] = val
+	if !keyIsValid(k) {
+		return fmt.Errorf("when putting '%q': %v", k, ErrInvalidKey)
+	}
+	bt.puts[k.String()] = val
 	return nil
 }
 
-func (bt *flatfsBatch) Delete(key datastore.Key) error {
-	if keyIsValid(key) {
-		bt.deletes[key] = struct{}{}
+func (bt *flatfsBatch) Delete(k key.Key) error {
+	if k.KeyType() != key.KeyTypeString {
+		return key.ErrKeyTypeNotSupported
+	}
+	if keyIsValid(k) {
+		bt.deletes[k.String()] = struct{}{}
 	} // otherwise, delete is a no-op anyways.
 	return nil
 }
@@ -1232,7 +1281,7 @@ func (bt *flatfsBatch) Commit() error {
 	}
 
 	for k := range bt.deletes {
-		if err := bt.ds.Delete(k); err != nil {
+		if err := bt.ds.Delete(key.RawStrKey(k)); err != nil {
 			return err
 		}
 	}

@@ -1,24 +1,25 @@
 # go-ds-flatfs
 
+Fork of [ipfs/go-ds-flatfs](https://github.com/ipfs/go-ds-flatfs) used by BDWare projects.
+
 [![](https://img.shields.io/badge/made%20by-Protocol%20Labs-blue.svg?style=flat-square)](http://ipn.io)
-[![](https://img.shields.io/badge/project-IPFS-blue.svg?style=flat-square)](http://ipfs.io/)
-[![](https://img.shields.io/badge/freenode-%23ipfs-blue.svg?style=flat-square)](http://webchat.freenode.net/?channels=%23ipfs)
+[![](https://img.shields.io/badge/project-BDWare-red.svg?style=flat-square)](http://bdware.org/)
 [![standard-readme compliant](https://img.shields.io/badge/standard--readme-OK-green.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
-[![GoDoc](https://godoc.org/github.com/ipfs/go-ds-flatfs?status.svg)](https://godoc.org/github.com/ipfs/go-ds-flatfs)
-[![Build Status](https://travis-ci.org/ipfs/go-ds-flatfs.svg?branch=master)](https://travis-ci.org/ipfs/go-ds-flatfs)
-[![Coverage Status](https://img.shields.io/codecov/c/github/ipfs/go-ds-flatfs.svg)](https://codecov.io/gh/ipfs/go-ds-flatfs)
+[![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/bdware/go-ds-flatfs)
+[![Build Status](https://travis-ci.org/BDWare/go-ds-flatfs.svg?branch=master)](https://travis-ci.org/BDWare/go-ds-flatfs)
+[![Coverage Status](https://img.shields.io/codecov/c/github/BDWare/go-ds-flatfs.svg)](https://codecov.io/gh/BDWare/go-ds-flatfs)
 
 
 > A datastore implementation using sharded directories and flat files to store data
 
-`go-ds-flatfs` is used by `go-ipfs` to store raw block contents on disk. It supports several sharding functions (prefix, suffix, next-to-last/*).
+`go-ds-flatfs` supports several sharding functions (prefix, suffix, next-to-last/*).
 
 It is _not_ a general-purpose datastore and has several important restrictions.
 See the restrictions section for details.
 
 ## Lead Maintainer
 
-[Jakub Sztandera](https://github.com/kubuxu)
+[Nex](https://github.com/NexZhu)
 
 ## Table of Contents
 
@@ -31,15 +32,14 @@ See the restrictions section for details.
 
 `go-ds-flatfs` can be used like any Go module:
 
-
 ```
-import "github.com/ipfs/go-ds-flatfs"
+import "github.com/bdware/go-ds-flatfs"
 ```
 
 ## Usage
 
-Check the [GoDoc module documentation](https://godoc.org/github.com/ipfs/go-ds-flatfs) for an overview of this module's
-functionality.
+Check the [API documentation](https://pkg.go.dev/github.com/bdware/go-ds-flatfs) for an overview of this module's
+functionality. 
 
 ### Restrictions
 
@@ -53,7 +53,7 @@ Attempts to write to such keys will result in an error.
 
 ### DiskUsage and Accuracy
 
-This datastore implements the [`PersistentDatastore`](https://godoc.org/github.com/ipfs/go-datastore#PersistentDatastore) interface. It offers a `DiskUsage()` method which strives to find a balance between accuracy and performance. This implies:
+This datastore implements the [`PersistentDatastore`](https://godoc.org/github.com/bdware/go-datastore#PersistentDatastore) interface. It offers a `DiskUsage()` method which strives to find a balance between accuracy and performance. This implies:
 
 * The total disk usage of a datastore is calculated when opening the datastore
 * The current disk usage is cached frequently in a file in the datastore root (`diskUsage.cache` by default). This file is also
@@ -104,4 +104,10 @@ Small note: If editing the README, please conform to the [standard-readme](https
 
 ## License
 
-MIT © Protocol Labs, Inc.
+[MIT](LICENSE)
+
+Copyright for portions of this fork are held by [Protocol Labs, 2016] as part of the original [go-ds-flatfs](https://github.com/libp2p/go-ds-flatfs) project.
+
+All other copyright for this fork are held by [The BDWare Authors, 2020].
+
+All rights reserved.

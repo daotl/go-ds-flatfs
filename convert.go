@@ -1,3 +1,9 @@
+// Copyright for portions of this fork are held by [Juan Batiz-Benet, 2016] as
+// part of the original go-ds-flatfs project. All other copyright for
+// this fork are held by [The BDWare Authors, 2020]. All rights reserved.
+// Use of this source code is governed by MIT license that can be
+// found in the LICENSE file.
+
 // Package flatfs is a Datastore implementation that stores all
 // objects in a two-level directory structure in the local file
 // system, regardless of the hierarchy of the keys.
@@ -11,8 +17,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/query"
+	"github.com/bdware/go-datastore/key"
+	"github.com/bdware/go-datastore/query"
 )
 
 func UpgradeV0toV1(path string, prefixLen int) error {
@@ -80,7 +86,7 @@ func Move(oldPath string, newPath string, out io.Writer) error {
 			return e.Error
 		}
 
-		err := moveKey(oldDS, newDS, datastore.RawKey(e.Key))
+		err := moveKey(oldDS, newDS, e.Key)
 		if err != nil {
 			res.Close()
 			return err
@@ -170,7 +176,7 @@ func Move(oldPath string, newPath string, out io.Writer) error {
 	return nil
 }
 
-func moveKey(oldDS *Datastore, newDS *Datastore, key datastore.Key) error {
+func moveKey(oldDS *Datastore, newDS *Datastore, key key.Key) error {
 	_, oldPath := oldDS.encode(key)
 	dir, newPath := newDS.encode(key)
 	err := os.Mkdir(dir, 0755)
