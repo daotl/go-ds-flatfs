@@ -106,7 +106,7 @@ Small note: If editing the README, please conform to the [standard-readme](https
 
 [MIT](LICENSE)
 
-Copyright for portions of this fork are held by [Protocol Labs, 2016] as part of the original [go-ds-flatfs](https://github.com/libp2p/go-ds-flatfs) project.
+Copyright for portions of this fork are held by [Protocol Labs, 2016] as part of the original [go-ds-flatfs](https://github.com/ipfs/go-ds-flatfs) project.
 
 All other copyright for this fork are held by [The BDWare Authors, 2020].
 
