@@ -1,13 +1,13 @@
 # go-ds-flatfs
 
-Fork of [ipfs/go-ds-flatfs](https://github.com/ipfs/go-ds-flatfs) used by BDWare projects.
+DAOT Labs's fork of [ipfs/go-ds-flatfs](https://github.com/ipfs/go-ds-flatfs).
 
 [![](https://img.shields.io/badge/made%20by-Protocol%20Labs-blue.svg?style=flat-square)](http://ipn.io)
-[![](https://img.shields.io/badge/project-BDWare-red.svg?style=flat-square)](http://bdware.org/)
+[![](https://img.shields.io/badge/project-DAOT%20Labs-red.svg?style=flat-square)](http://github.com/daotl)
 [![standard-readme compliant](https://img.shields.io/badge/standard--readme-OK-green.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
-[![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/bdware/go-ds-flatfs)
-[![Build Status](https://travis-ci.org/BDWare/go-ds-flatfs.svg?branch=master)](https://travis-ci.org/BDWare/go-ds-flatfs)
-[![Coverage Status](https://img.shields.io/codecov/c/github/BDWare/go-ds-flatfs.svg)](https://codecov.io/gh/BDWare/go-ds-flatfs)
+[![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/daotl/go-ds-flatfs)
+[![Build Status](https://travis-ci.org/daotl/go-ds-flatfs.svg?branch=master)](https://travis-ci.org/daotl/go-ds-flatfs)
+[![Coverage Status](https://img.shields.io/codecov/c/github/daotl/go-ds-flatfs.svg)](https://codecov.io/gh/daotl/go-ds-flatfs)
 
 
 > A datastore implementation using sharded directories and flat files to store data
@@ -33,12 +33,12 @@ See the restrictions section for details.
 `go-ds-flatfs` can be used like any Go module:
 
 ```
-import "github.com/bdware/go-ds-flatfs"
+import "github.com/daotl/go-ds-flatfs"
 ```
 
 ## Usage
 
-Check the [API documentation](https://pkg.go.dev/github.com/bdware/go-ds-flatfs) for an overview of this module's
+Check the [API documentation](https://pkg.go.dev/github.com/daotl/go-ds-flatfs) for an overview of this module's
 functionality. 
 
 ### Restrictions
@@ -53,7 +53,7 @@ Attempts to write to such keys will result in an error.
 
 ### DiskUsage and Accuracy
 
-This datastore implements the [`PersistentDatastore`](https://godoc.org/github.com/bdware/go-datastore#PersistentDatastore) interface. It offers a `DiskUsage()` method which strives to find a balance between accuracy and performance. This implies:
+This datastore implements the [`PersistentDatastore`](https://godoc.org/github.com/daotl/go-datastore#PersistentDatastore) interface. It offers a `DiskUsage()` method which strives to find a balance between accuracy and performance. This implies:
 
 * The total disk usage of a datastore is calculated when opening the datastore
 * The current disk usage is cached frequently in a file in the datastore root (`diskUsage.cache` by default). This file is also
@@ -108,6 +108,6 @@ Small note: If editing the README, please conform to the [standard-readme](https
 
 Copyright for portions of this fork are held by [Protocol Labs, 2016] as part of the original [go-ds-flatfs](https://github.com/ipfs/go-ds-flatfs) project.
 
-All other copyright for this fork are held by [The BDWare Authors, 2020].
+All other copyright for this fork are held by [DAOT Labs, 2020].
 
 All rights reserved.

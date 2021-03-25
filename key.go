@@ -1,13 +1,12 @@
-// Copyright for portions of this fork are held by [Juan Batiz-Benet, 2016] as
-// part of the original go-ds-flatfs project. All other copyright for
-// this fork are held by [The BDWare Authors, 2020]. All rights reserved.
-// Use of this source code is governed by MIT license that can be
-// found in the LICENSE file.
+// Copyright for portions of this fork are held by [Juan Batiz-Benet, 2016]
+// as part of the original go-datastore project. All other copyright for this
+// fork are held by [DAOT Labs, 2020]. All rights reserved. Use of this source
+// code is governed by MIT license that can be found in the LICENSE file.
 
 package flatfs
 
 import (
-	"github.com/bdware/go-datastore/key"
+	"github.com/daotl/go-datastore/key"
 )
 
 // keyIsValid returns true if the key is valid for flatfs.

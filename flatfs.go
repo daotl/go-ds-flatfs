@@ -1,8 +1,7 @@
-// Copyright for portions of this fork are held by [Juan Batiz-Benet, 2016] as
-// part of the original go-ds-flatfs project. All other copyright for
-// this fork are held by [The BDWare Authors, 2020]. All rights reserved.
-// Use of this source code is governed by MIT license that can be
-// found in the LICENSE file.
+// Copyright for portions of this fork are held by [Juan Batiz-Benet, 2016]
+// as part of the original go-datastore project. All other copyright for this
+// fork are held by [DAOT Labs, 2020]. All rights reserved. Use of this source
+// code is governed by MIT license that can be found in the LICENSE file.
 
 // Package flatfs is a Datastore implementation that stores all
 // objects in a two-level directory structure in the local file
@@ -23,9 +22,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/bdware/go-datastore"
-	"github.com/bdware/go-datastore/key"
-	"github.com/bdware/go-datastore/query"
+	"github.com/daotl/go-datastore"
+	"github.com/daotl/go-datastore/key"
+	"github.com/daotl/go-datastore/query"
 	"github.com/jbenet/goprocess"
 
 	logging "github.com/ipfs/go-log"
@@ -328,7 +327,7 @@ func (fs *Datastore) decode(file string) (k key.Key, ok bool) {
 		return nil, false
 	}
 	name := file[:len(file)-len(extension)]
-	return key.RawStrKey(name), true
+	return key.NewStrKey(name), true
 }
 
 func (fs *Datastore) makeDir(dir string) error {
@@ -590,7 +589,7 @@ func (fs *Datastore) putMany(data map[string][]byte) error {
 	}
 
 	for kstr, value := range data {
-		k := key.RawStrKey(kstr)
+		k := key.NewStrKey(kstr)
 		dir, path := fs.encode(k)
 		if err := fs.makeDirNoSync(dir); err != nil {
 			return err
@@ -1281,7 +1280,7 @@ func (bt *flatfsBatch) Commit() error {
 	}
 
 	for k := range bt.deletes {
-		if err := bt.ds.Delete(key.RawStrKey(k)); err != nil {
+		if err := bt.ds.Delete(key.NewStrKey(k)); err != nil {
 			return err
 		}
 	}
