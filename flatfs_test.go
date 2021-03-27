@@ -63,21 +63,21 @@ func tempdir(t testing.TB) (path string, cleanup func()) {
 	return path, cleanup
 }
 
-func tryAllShardFuncs(t *testing.T, keyType key.KeyType,
+func tryAllShardFuncs(t *testing.T, ktype key.KeyType,
 	testFunc func(key.KeyType, mkShardFunc, *testing.T)) {
-	t.Run("prefix", func(t *testing.T) { testFunc(keyType, flatfs.Prefix, t) })
-	t.Run("suffix", func(t *testing.T) { testFunc(keyType, flatfs.Suffix, t) })
-	t.Run("next-to-last", func(t *testing.T) { testFunc(keyType, flatfs.NextToLast, t) })
+	t.Run("prefix", func(t *testing.T) { testFunc(ktype, flatfs.Prefix, t) })
+	t.Run("suffix", func(t *testing.T) { testFunc(ktype, flatfs.Suffix, t) })
+	t.Run("next-to-last", func(t *testing.T) { testFunc(ktype, flatfs.NextToLast, t) })
 }
 
 type mkShardFunc func(int) *flatfs.ShardIdV1
 
-func testBatch(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
+func testBatch(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	temp, cleanup := tempdir(t)
 	defer cleanup()
 	defer checkTemp(t, temp)
 
-	fs, err := flatfs.CreateOrOpen(keyType, temp, dirFunc(2), false)
+	fs, err := flatfs.CreateOrOpen(ktype, temp, dirFunc(2), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
@@ -92,11 +92,11 @@ func testBatch(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 
 		batches[i] = batch
 
-		err = batch.Put(key.NewKeyFromTypeAndString(keyType, "QUUX"), []byte("foo"))
+		err = batch.Put(key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte("foo"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = batch.Put(key.NewKeyFromTypeAndString(keyType, fmt.Sprintf("Q%dX", i)),
+		err = batch.Put(key.NewKeyFromTypeAndString(ktype, fmt.Sprintf("Q%dX", i)),
 			[]byte(fmt.Sprintf("bar%d", i)))
 		if err != nil {
 			t.Fatal(err)
@@ -117,7 +117,7 @@ func testBatch(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	}
 
 	check := func(k, expected string) {
-		actual, err := fs.Get(key.NewKeyFromTypeAndString(keyType, k))
+		actual, err := fs.Get(key.NewKeyFromTypeAndString(ktype, k))
 		if err != nil {
 			t.Fatalf("get for key %s, error: %s", k, err)
 		}
@@ -139,24 +139,24 @@ func TestBatch(t *testing.T) {
 	tryAllShardFuncs(t, key.KeyTypeBytes, testBatch)
 }
 
-func testPut(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
+func testPut(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	temp, cleanup := tempdir(t)
 	defer cleanup()
 	defer checkTemp(t, temp)
 
-	fs, err := flatfs.CreateOrOpen(keyType, temp, dirFunc(2), false)
+	fs, err := flatfs.CreateOrOpen(ktype, temp, dirFunc(2), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
 	defer fs.Close()
 
-	err = fs.Put(key.NewKeyFromTypeAndString(keyType, "QUUX"), []byte("foobar"))
+	err = fs.Put(key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte("foobar"))
 	if err != nil {
 		t.Fatalf("Put fail: %v\n", err)
 	}
 
-	if keyType == key.KeyTypeString {
-		err := fs.Put(key.NewKeyFromTypeAndString(keyType, "foo"), []byte("nonono"))
+	if ktype == key.KeyTypeString {
+		err := fs.Put(key.NewKeyFromTypeAndString(ktype, "foo"), []byte("nonono"))
 		if err == nil {
 			t.Fatalf("did not expect to put a lowercase key")
 		}
@@ -168,24 +168,24 @@ func TestPut(t *testing.T) {
 	tryAllShardFuncs(t, key.KeyTypeBytes, testPut)
 }
 
-func testGet(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
+func testGet(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	temp, cleanup := tempdir(t)
 	defer cleanup()
 	defer checkTemp(t, temp)
 
-	fs, err := flatfs.CreateOrOpen(keyType, temp, dirFunc(2), false)
+	fs, err := flatfs.CreateOrOpen(ktype, temp, dirFunc(2), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
 	defer fs.Close()
 
 	const input = "foobar"
-	err = fs.Put(key.NewKeyFromTypeAndString(keyType, "QUUX"), []byte(input))
+	err = fs.Put(key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte(input))
 	if err != nil {
 		t.Fatalf("Put fail: %v\n", err)
 	}
 
-	buf, err := fs.Get(key.NewKeyFromTypeAndString(keyType, "QUUX"))
+	buf, err := fs.Get(key.NewKeyFromTypeAndString(ktype, "QUUX"))
 	if err != nil {
 		t.Fatalf("Get failed: %v", err)
 	}
@@ -193,7 +193,7 @@ func testGet(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 		t.Fatalf("Get gave wrong content: %q != %q", g, e)
 	}
 
-	_, err = fs.Get(key.NewKeyFromTypeAndString(keyType, "/FOO/BAR"))
+	_, err = fs.Get(key.NewKeyFromTypeAndString(ktype, "/FOO/BAR"))
 	if err != datastore.ErrNotFound {
 		t.Fatalf("expected ErrNotFound, got %s", err)
 	}
@@ -204,12 +204,12 @@ func TestGet(t *testing.T) {
 	tryAllShardFuncs(t, key.KeyTypeBytes, testGet)
 }
 
-func testPutOverwrite(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
+func testPutOverwrite(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	temp, cleanup := tempdir(t)
 	defer cleanup()
 	defer checkTemp(t, temp)
 
-	fs, err := flatfs.CreateOrOpen(keyType, temp, dirFunc(2), false)
+	fs, err := flatfs.CreateOrOpen(ktype, temp, dirFunc(2), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
@@ -219,17 +219,17 @@ func testPutOverwrite(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 		loser  = "foobar"
 		winner = "xyzzy"
 	)
-	err = fs.Put(key.NewKeyFromTypeAndString(keyType, "QUUX"), []byte(loser))
+	err = fs.Put(key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte(loser))
 	if err != nil {
 		t.Fatalf("Put fail: %v\n", err)
 	}
 
-	err = fs.Put(key.NewKeyFromTypeAndString(keyType, "QUUX"), []byte(winner))
+	err = fs.Put(key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte(winner))
 	if err != nil {
 		t.Fatalf("Put fail: %v\n", err)
 	}
 
-	data, err := fs.Get(key.NewKeyFromTypeAndString(keyType, "QUUX"))
+	data, err := fs.Get(key.NewKeyFromTypeAndString(ktype, "QUUX"))
 	if err != nil {
 		t.Fatalf("Get failed: %v", err)
 	}
@@ -243,18 +243,18 @@ func TestPutOverwrite(t *testing.T) {
 	tryAllShardFuncs(t, key.KeyTypeBytes, testPutOverwrite)
 }
 
-func testGetNotFoundError(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
+func testGetNotFoundError(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	temp, cleanup := tempdir(t)
 	defer cleanup()
 	defer checkTemp(t, temp)
 
-	fs, err := flatfs.CreateOrOpen(keyType, temp, dirFunc(2), false)
+	fs, err := flatfs.CreateOrOpen(ktype, temp, dirFunc(2), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
 	defer fs.Close()
 
-	_, err = fs.Get(key.NewKeyFromTypeAndString(keyType, "QUUX"))
+	_, err = fs.Get(key.NewKeyFromTypeAndString(ktype, "QUUX"))
 	if g, e := err, datastore.ErrNotFound; g != e {
 		t.Fatalf("expected ErrNotFound, got: %v\n", g)
 	}
@@ -366,18 +366,18 @@ func TestStorage(t *testing.T) {
 	})
 }
 
-func testHasNotFound(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
+func testHasNotFound(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	temp, cleanup := tempdir(t)
 	defer cleanup()
 	defer checkTemp(t, temp)
 
-	fs, err := flatfs.CreateOrOpen(keyType, temp, dirFunc(2), false)
+	fs, err := flatfs.CreateOrOpen(ktype, temp, dirFunc(2), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
 	defer fs.Close()
 
-	found, err := fs.Has(key.NewKeyFromTypeAndString(keyType, "QUUX"))
+	found, err := fs.Has(key.NewKeyFromTypeAndString(ktype, "QUUX"))
 	if err != nil {
 		t.Fatalf("Has fail: %v\n", err)
 	}
@@ -391,23 +391,23 @@ func TestHasNotFound(t *testing.T) {
 	tryAllShardFuncs(t, key.KeyTypeBytes, testHasNotFound)
 }
 
-func testHasFound(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
+func testHasFound(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	temp, cleanup := tempdir(t)
 	defer cleanup()
 	defer checkTemp(t, temp)
 
-	fs, err := flatfs.CreateOrOpen(keyType, temp, dirFunc(2), false)
+	fs, err := flatfs.CreateOrOpen(ktype, temp, dirFunc(2), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
 	defer fs.Close()
 
-	err = fs.Put(key.NewKeyFromTypeAndString(keyType, "QUUX"), []byte("foobar"))
+	err = fs.Put(key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte("foobar"))
 	if err != nil {
 		t.Fatalf("Put fail: %v\n", err)
 	}
 
-	found, err := fs.Has(key.NewKeyFromTypeAndString(keyType, "QUUX"))
+	found, err := fs.Has(key.NewKeyFromTypeAndString(ktype, "QUUX"))
 	if err != nil {
 		t.Fatalf("Has fail: %v\n", err)
 	}
@@ -421,18 +421,18 @@ func TestHasFound(t *testing.T) {
 	tryAllShardFuncs(t, key.KeyTypeBytes, testHasFound)
 }
 
-func testGetSizeFound(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
+func testGetSizeFound(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	temp, cleanup := tempdir(t)
 	defer cleanup()
 	defer checkTemp(t, temp)
 
-	fs, err := flatfs.CreateOrOpen(keyType, temp, dirFunc(2), false)
+	fs, err := flatfs.CreateOrOpen(ktype, temp, dirFunc(2), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
 	defer fs.Close()
 
-	_, err = fs.GetSize(key.NewKeyFromTypeAndString(keyType, "QUUX"))
+	_, err = fs.GetSize(key.NewKeyFromTypeAndString(ktype, "QUUX"))
 	if err != datastore.ErrNotFound {
 		t.Fatalf("GetSize should have returned ErrNotFound, got: %v\n", err)
 	}
@@ -443,23 +443,23 @@ func TestGetSizeFound(t *testing.T) {
 	tryAllShardFuncs(t, key.KeyTypeBytes, testGetSizeFound)
 }
 
-func testGetSizeNotFound(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
+func testGetSizeNotFound(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	temp, cleanup := tempdir(t)
 	defer cleanup()
 	defer checkTemp(t, temp)
 
-	fs, err := flatfs.CreateOrOpen(keyType, temp, dirFunc(2), false)
+	fs, err := flatfs.CreateOrOpen(ktype, temp, dirFunc(2), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
 	defer fs.Close()
 
-	err = fs.Put(key.NewKeyFromTypeAndString(keyType, "QUUX"), []byte("foobar"))
+	err = fs.Put(key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte("foobar"))
 	if err != nil {
 		t.Fatalf("Put fail: %v\n", err)
 	}
 
-	size, err := fs.GetSize(key.NewKeyFromTypeAndString(keyType, "QUUX"))
+	size, err := fs.GetSize(key.NewKeyFromTypeAndString(ktype, "QUUX"))
 	if err != nil {
 		t.Fatalf("GetSize failed with: %v\n", err)
 	}
@@ -473,18 +473,18 @@ func TestGetSizeNotFound(t *testing.T) {
 	tryAllShardFuncs(t, key.KeyTypeBytes, testGetSizeNotFound)
 }
 
-func testDeleteNotFound(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
+func testDeleteNotFound(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	temp, cleanup := tempdir(t)
 	defer cleanup()
 	defer checkTemp(t, temp)
 
-	fs, err := flatfs.CreateOrOpen(keyType, temp, dirFunc(2), false)
+	fs, err := flatfs.CreateOrOpen(ktype, temp, dirFunc(2), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
 	defer fs.Close()
 
-	err = fs.Delete(key.NewKeyFromTypeAndString(keyType, "QUUX"))
+	err = fs.Delete(key.NewKeyFromTypeAndString(ktype, "QUUX"))
 	if err != nil {
 		t.Fatalf("expected nil, got: %v\n", err)
 	}
@@ -495,29 +495,29 @@ func TestDeleteNotFound(t *testing.T) {
 	tryAllShardFuncs(t, key.KeyTypeBytes, testDeleteNotFound)
 }
 
-func testDeleteFound(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
+func testDeleteFound(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	temp, cleanup := tempdir(t)
 	defer cleanup()
 	defer checkTemp(t, temp)
 
-	fs, err := flatfs.CreateOrOpen(keyType, temp, dirFunc(2), false)
+	fs, err := flatfs.CreateOrOpen(ktype, temp, dirFunc(2), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
 	defer fs.Close()
 
-	err = fs.Put(key.NewKeyFromTypeAndString(keyType, "QUUX"), []byte("foobar"))
+	err = fs.Put(key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte("foobar"))
 	if err != nil {
 		t.Fatalf("Put fail: %v\n", err)
 	}
 
-	err = fs.Delete(key.NewKeyFromTypeAndString(keyType, "QUUX"))
+	err = fs.Delete(key.NewKeyFromTypeAndString(ktype, "QUUX"))
 	if err != nil {
 		t.Fatalf("Delete fail: %v\n", err)
 	}
 
 	// check that it's gone
-	_, err = fs.Get(key.NewKeyFromTypeAndString(keyType, "QUUX"))
+	_, err = fs.Get(key.NewKeyFromTypeAndString(ktype, "QUUX"))
 	if g, e := err, datastore.ErrNotFound; g != e {
 		t.Fatalf("expected Get after Delete to give ErrNotFound, got: %v\n", g)
 	}
@@ -528,18 +528,18 @@ func TestDeleteFound(t *testing.T) {
 	tryAllShardFuncs(t, key.KeyTypeBytes, testDeleteFound)
 }
 
-func testQuerySimple(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
+func testQuerySimple(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	temp, cleanup := tempdir(t)
 	defer cleanup()
 	defer checkTemp(t, temp)
 
-	fs, err := flatfs.CreateOrOpen(keyType, temp, dirFunc(2), false)
+	fs, err := flatfs.CreateOrOpen(ktype, temp, dirFunc(2), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
 	defer fs.Close()
 
-	myKey := key.NewKeyFromTypeAndString(keyType, "QUUX")
+	myKey := key.NewKeyFromTypeAndString(ktype, "QUUX")
 	err = fs.Put(myKey, []byte("foobar"))
 	if err != nil {
 		t.Fatalf("Put fail: %v\n", err)
@@ -571,12 +571,12 @@ func TestQuerySimple(t *testing.T) {
 	tryAllShardFuncs(t, key.KeyTypeBytes, testQuerySimple)
 }
 
-func testDiskUsage(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
+func testDiskUsage(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	temp, cleanup := tempdir(t)
 	defer cleanup()
 	defer checkTemp(t, temp)
 
-	fs, err := flatfs.CreateOrOpen(keyType, temp, dirFunc(2), false)
+	fs, err := flatfs.CreateOrOpen(ktype, temp, dirFunc(2), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
@@ -591,7 +591,7 @@ func testDiskUsage(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 
 	count := 200
 	for i := 0; i < count; i++ {
-		k := key.NewKeyFromTypeAndString(keyType, fmt.Sprintf("TEST-%d", i))
+		k := key.NewKeyFromTypeAndString(ktype, fmt.Sprintf("TEST-%d", i))
 		v := []byte("10bytes---")
 		err = fs.Put(k, v)
 		if err != nil {
@@ -607,7 +607,7 @@ func testDiskUsage(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	t.Log("duPostPut:", duElems)
 
 	for i := 0; i < count; i++ {
-		k := key.NewKeyFromTypeAndString(keyType, fmt.Sprintf("TEST-%d", i))
+		k := key.NewKeyFromTypeAndString(ktype, fmt.Sprintf("TEST-%d", i))
 		err = fs.Delete(k)
 		if err != nil {
 			t.Fatalf("Delete fail: %v\n", err)
@@ -653,7 +653,7 @@ func testDiskUsage(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 
 	// Make sure size is correctly calculated on re-open
 	os.Remove(filepath.Join(temp, flatfs.DiskUsageFile))
-	fs, err = flatfs.Open(keyType, temp, false)
+	fs, err = flatfs.Open(ktype, temp, false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
@@ -699,12 +699,12 @@ func TestDiskUsageDoubleCount(t *testing.T) {
 // test that concurrently writing and deleting the same key/value
 // does not throw any errors and disk usage does not do
 // any double-counting.
-func testDiskUsageDoubleCount(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
+func testDiskUsageDoubleCount(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	temp, cleanup := tempdir(t)
 	defer cleanup()
 	defer checkTemp(t, temp)
 
-	fs, err := flatfs.CreateOrOpen(keyType, temp, dirFunc(2), false)
+	fs, err := flatfs.CreateOrOpen(ktype, temp, dirFunc(2), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
@@ -712,7 +712,7 @@ func testDiskUsageDoubleCount(keyType key.KeyType, dirFunc mkShardFunc, t *testi
 
 	var count int
 	var wg sync.WaitGroup
-	testKey := key.NewKeyFromTypeAndString(keyType, "TEST")
+	testKey := key.NewKeyFromTypeAndString(ktype, "TEST")
 
 	put := func() {
 		defer wg.Done()
@@ -773,12 +773,12 @@ func testDiskUsageDoubleCount(keyType key.KeyType, dirFunc mkShardFunc, t *testi
 	}
 }
 
-func testDiskUsageBatch(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
+func testDiskUsageBatch(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	temp, cleanup := tempdir(t)
 	defer cleanup()
 	defer checkTemp(t, temp)
 
-	fs, err := flatfs.CreateOrOpen(keyType, temp, dirFunc(2), false)
+	fs, err := flatfs.CreateOrOpen(ktype, temp, dirFunc(2), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
@@ -793,7 +793,7 @@ func testDiskUsageBatch(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) 
 	var wg sync.WaitGroup
 	testKeys := []key.Key{}
 	for i := 0; i < count; i++ {
-		k := key.NewKeyFromTypeAndString(keyType, fmt.Sprintf("TEST%d", i))
+		k := key.NewKeyFromTypeAndString(ktype, fmt.Sprintf("TEST%d", i))
 		testKeys = append(testKeys, k)
 	}
 
@@ -877,12 +877,12 @@ func TestDiskUsageBatch(t *testing.T) {
 	tryAllShardFuncs(t, key.KeyTypeBytes, testDiskUsageBatch)
 }
 
-func testDiskUsageEstimation(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
+func testDiskUsageEstimation(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	temp, cleanup := tempdir(t)
 	defer cleanup()
 	defer checkTemp(t, temp)
 
-	fs, err := flatfs.CreateOrOpen(keyType, temp, dirFunc(2), false)
+	fs, err := flatfs.CreateOrOpen(ktype, temp, dirFunc(2), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
@@ -890,7 +890,7 @@ func testDiskUsageEstimation(keyType key.KeyType, dirFunc mkShardFunc, t *testin
 
 	count := 50000
 	for i := 0; i < count; i++ {
-		k := key.NewKeyFromTypeAndString(keyType, fmt.Sprintf("%d-TEST-%d", i, i))
+		k := key.NewKeyFromTypeAndString(ktype, fmt.Sprintf("%d-TEST-%d", i, i))
 		v := make([]byte, 1000)
 		err = fs.Put(k, v)
 		if err != nil {
@@ -904,7 +904,7 @@ func testDiskUsageEstimation(keyType key.KeyType, dirFunc mkShardFunc, t *testin
 
 	// This will do a full du
 	flatfs.DiskUsageFilesAverage = -1
-	fs, err = flatfs.Open(keyType, temp, false)
+	fs, err = flatfs.Open(ktype, temp, false)
 	if err != nil {
 		t.Fatalf("Open fail: %v\n", err)
 	}
@@ -921,7 +921,7 @@ func testDiskUsageEstimation(keyType key.KeyType, dirFunc mkShardFunc, t *testin
 	// length we can use a low file average number.
 	flatfs.DiskUsageFilesAverage = 100
 	// Make sure size is correctly calculated on re-open
-	fs, err = flatfs.Open(keyType, temp, false)
+	fs, err = flatfs.Open(ktype, temp, false)
 	if err != nil {
 		t.Fatalf("Open fail: %v\n", err)
 	}
@@ -949,7 +949,7 @@ func testDiskUsageEstimation(keyType key.KeyType, dirFunc mkShardFunc, t *testin
 	fs.Close()
 
 	// Reopen into a new variable
-	fs2, err := flatfs.Open(keyType, temp, false)
+	fs2, err := flatfs.Open(ktype, temp, false)
 	if err != nil {
 		t.Fatalf("Open fail: %v\n", err)
 	}
@@ -965,18 +965,18 @@ func TestDiskUsageEstimation(t *testing.T) {
 	tryAllShardFuncs(t, key.KeyTypeString, testDiskUsageEstimation)
 }
 
-func testBatchPut(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
+func testBatchPut(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	temp, cleanup := tempdir(t)
 	defer cleanup()
 	defer checkTemp(t, temp)
 
-	fs, err := flatfs.CreateOrOpen(keyType, temp, dirFunc(2), false)
+	fs, err := flatfs.CreateOrOpen(ktype, temp, dirFunc(2), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
 	defer fs.Close()
 
-	dstest.RunBatchTest(t, keyType, fs)
+	dstest.RunBatchTest(t, ktype, fs)
 }
 
 func TestBatchPut(t *testing.T) {
@@ -984,18 +984,18 @@ func TestBatchPut(t *testing.T) {
 	tryAllShardFuncs(t, key.KeyTypeBytes, testBatchPut)
 }
 
-func testBatchDelete(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
+func testBatchDelete(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	temp, cleanup := tempdir(t)
 	defer cleanup()
 	defer checkTemp(t, temp)
 
-	fs, err := flatfs.CreateOrOpen(keyType, temp, dirFunc(2), false)
+	fs, err := flatfs.CreateOrOpen(ktype, temp, dirFunc(2), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
 	defer fs.Close()
 
-	dstest.RunBatchDeleteTest(t, keyType, fs)
+	dstest.RunBatchDeleteTest(t, ktype, fs)
 }
 
 func TestBatchDelete(t *testing.T) {
@@ -1003,24 +1003,24 @@ func TestBatchDelete(t *testing.T) {
 	tryAllShardFuncs(t, key.KeyTypeBytes, testBatchDelete)
 }
 
-func testClose(keyType key.KeyType, dirFunc mkShardFunc, t *testing.T) {
+func testClose(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	temp, cleanup := tempdir(t)
 	defer cleanup()
 	defer checkTemp(t, temp)
 
-	fs, err := flatfs.CreateOrOpen(keyType, temp, dirFunc(2), false)
+	fs, err := flatfs.CreateOrOpen(ktype, temp, dirFunc(2), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
 
-	err = fs.Put(key.NewKeyFromTypeAndString(keyType, "QUUX"), []byte("foobar"))
+	err = fs.Put(key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte("foobar"))
 	if err != nil {
 		t.Fatalf("Put fail: %v\n", err)
 	}
 
 	fs.Close()
 
-	err = fs.Put(key.NewKeyFromTypeAndString(keyType, "QAAX"), []byte("foobar"))
+	err = fs.Put(key.NewKeyFromTypeAndString(ktype, "QAAX"), []byte("foobar"))
 	if err == nil {
 		t.Fatal("expected put on closed datastore to fail")
 	}
@@ -1031,7 +1031,7 @@ func TestClose(t *testing.T) {
 	tryAllShardFuncs(t, key.KeyTypeBytes, testClose)
 }
 
-func testSHARDINGFile(t *testing.T, keyType key.KeyType) {
+func testSHARDINGFile(t *testing.T, ktype key.KeyType) {
 	tempdir, cleanup := tempdir(t)
 	defer cleanup()
 
@@ -1091,13 +1091,13 @@ func TestNonDatastoreDir(t *testing.T) {
 	}
 }
 
-func testNoCluster(t *testing.T, keyType key.KeyType) {
+func testNoCluster(t *testing.T, ktype key.KeyType) {
 
 	tempdir, cleanup := tempdir(t)
 	defer cleanup()
 	defer checkTemp(t, tempdir)
 
-	fs, err := flatfs.CreateOrOpen(keyType, tempdir, flatfs.NextToLast(1), false)
+	fs, err := flatfs.CreateOrOpen(ktype, tempdir, flatfs.NextToLast(1), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
@@ -1110,7 +1110,7 @@ func testNoCluster(t *testing.T, keyType key.KeyType) {
 		r.Read(blk)
 
 		var err error
-		switch keyType {
+		switch ktype {
 		case key.KeyTypeString:
 			k := "CIQ" + base32.StdEncoding.EncodeToString(blk[:10])
 			err = fs.Put(key.NewStrKey(k), blk)
@@ -1232,18 +1232,18 @@ func BenchmarkBatchedPut(b *testing.B) {
 	b.StopTimer() // avoid counting cleanup
 }
 
-func testQueryLeak(t *testing.T, keyType key.KeyType) {
+func testQueryLeak(t *testing.T, ktype key.KeyType) {
 	temp, cleanup := tempdir(t)
 	defer cleanup()
 
-	fs, err := flatfs.CreateOrOpen(keyType, temp, flatfs.Prefix(2), false)
+	fs, err := flatfs.CreateOrOpen(ktype, temp, flatfs.Prefix(2), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
 	defer fs.Close()
 
 	for i := 0; i < 1000; i++ {
-		err = fs.Put(key.NewKeyFromTypeAndString(keyType, fmt.Sprint(i)), []byte("foobar"))
+		err = fs.Put(key.NewKeyFromTypeAndString(ktype, fmt.Sprint(i)), []byte("foobar"))
 		if err != nil {
 			t.Fatalf("Put fail: %v\n", err)
 		}
@@ -1268,21 +1268,21 @@ func TestQueryLeak(t *testing.T) {
 	testQueryLeak(t, key.KeyTypeBytes)
 }
 
-func testSuite(t *testing.T, keyType key.KeyType) {
+func testSuite(t *testing.T, ktype key.KeyType) {
 	temp, cleanup := tempdir(t)
 	defer cleanup()
 	defer checkTemp(t, temp)
 
-	fs, err := flatfs.CreateOrOpen(keyType, temp, flatfs.Prefix(2), false)
+	fs, err := flatfs.CreateOrOpen(ktype, temp, flatfs.Prefix(2), false)
 	if err != nil {
 		t.Fatalf("New fail: %v\n", err)
 	}
 
 	ds := mount.New([]mount.Mount{{
-		Prefix:    key.EmptyKeyFromType(keyType),
-		Datastore: dstest.NewMapDatastoreForTest(t, keyType),
+		Prefix:    key.EmptyKeyFromType(ktype),
+		Datastore: dstest.NewMapDatastoreForTest(t, ktype),
 	}, {
-		Prefix:    key.NewKeyFromTypeAndString(keyType, "capital"),
+		Prefix:    key.NewKeyFromTypeAndString(ktype, "capital"),
 		Datastore: fs,
 	}})
 	defer func() {
@@ -1292,7 +1292,7 @@ func testSuite(t *testing.T, keyType key.KeyType) {
 		}
 	}()
 
-	dstest.SubtestAll(t, keyType, ds)
+	dstest.SubtestAll(t, ktype, ds)
 }
 
 func TestSuite(t *testing.T) {

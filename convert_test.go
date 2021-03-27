@@ -21,7 +21,7 @@ import (
 	flatfs "github.com/daotl/go-ds-flatfs"
 )
 
-func testMove(t *testing.T, keyType key.KeyType) {
+func testMove(t *testing.T, ktype key.KeyType) {
 	tempdir, cleanup := tempdir(t)
 	defer cleanup()
 
@@ -33,7 +33,7 @@ func testMove(t *testing.T, keyType key.KeyType) {
 		t.Fatalf("WriteFile fail: %v\n", err)
 	}
 
-	keys, blocks := populateDatastore(t, keyType, v1dir)
+	keys, blocks := populateDatastore(t, ktype, v1dir)
 
 	v2dir := filepath.Join(tempdir, "v2")
 	createDatastore(t, v2dir, flatfs.NextToLast(2))
@@ -53,7 +53,7 @@ func testMove(t *testing.T, keyType key.KeyType) {
 	}
 
 	// check that all keys are available
-	checkKeys(t, keyType, v2dir, keys, blocks)
+	checkKeys(t, ktype, v2dir, keys, blocks)
 
 	// check that a key is in the correct format
 	shard := filepath.Join(v2dir, flatfs.NextToLast(2).Func()(keys[0].String()))
@@ -68,7 +68,7 @@ func TestMove(t *testing.T) {
 	testMove(t, key.KeyTypeBytes)
 }
 
-func testMoveRestart(t *testing.T, keyType key.KeyType) {
+func testMoveRestart(t *testing.T, ktype key.KeyType) {
 	tempdir, cleanup := tempdir(t)
 	defer cleanup()
 
@@ -79,8 +79,8 @@ func testMoveRestart(t *testing.T, keyType key.KeyType) {
 
 	createDatastore(t, v2dir, flatfs.NextToLast(5))
 
-	keys, blocks := populateDatastore(t, keyType, v1dir)
-	checkKeys(t, keyType, v1dir, keys, blocks)
+	keys, blocks := populateDatastore(t, ktype, v1dir)
+	checkKeys(t, ktype, v1dir, keys, blocks)
 
 	// get a directory in the datastore
 	noslash := keys[0].String()[1:]
@@ -103,7 +103,7 @@ func testMoveRestart(t *testing.T, keyType key.KeyType) {
 	if err != nil {
 		t.Fatal("Could not undo the move.", err)
 	}
-	checkKeys(t, keyType, v1dir, keys, blocks)
+	checkKeys(t, ktype, v1dir, keys, blocks)
 
 	// there should be nothing left in the new datastore
 	rmEmptyDatastore(t, v2dir)
@@ -131,7 +131,7 @@ func testMoveRestart(t *testing.T, keyType key.KeyType) {
 	rmEmptyDatastore(t, v1dir)
 
 	// make sure everything moved by checking all keys
-	checkKeys(t, keyType, v2dir, keys, blocks)
+	checkKeys(t, ktype, v2dir, keys, blocks)
 
 	// check that a key is in the correct format
 	shard := filepath.Join(v2dir, flatfs.NextToLast(2).Func()(keys[0].String()))
@@ -149,14 +149,14 @@ func TestMoveRestart(t *testing.T) {
 	testMoveRestart(t, key.KeyTypeBytes)
 }
 
-func testUpgradeDownload(t *testing.T, keyType key.KeyType) {
+func testUpgradeDownload(t *testing.T, ktype key.KeyType) {
 	tempdir, cleanup := tempdir(t)
 	defer cleanup()
 
 	createDatastore(t, tempdir, flatfs.Prefix(3))
 
-	keys, blocks := populateDatastore(t, keyType, tempdir)
-	checkKeys(t, keyType, tempdir, keys, blocks)
+	keys, blocks := populateDatastore(t, ktype, tempdir)
+	checkKeys(t, ktype, tempdir, keys, blocks)
 
 	err := flatfs.UpgradeV0toV1(tempdir, 3)
 	if err == nil {
@@ -181,7 +181,7 @@ func testUpgradeDownload(t *testing.T, keyType key.KeyType) {
 	}
 
 	// This will fail unless the repository is in the new version
-	checkKeys(t, keyType, tempdir, keys, blocks)
+	checkKeys(t, ktype, tempdir, keys, blocks)
 }
 
 func TestUpgradeDownload(t *testing.T) {
@@ -215,8 +215,8 @@ func rmEmptyDatastore(t *testing.T, dir string) {
 	}
 }
 
-func populateDatastore(t *testing.T, keyType key.KeyType, dir string) ([]key.Key, [][]byte) {
-	ds, err := flatfs.Open(keyType, dir, false)
+func populateDatastore(t *testing.T, ktype key.KeyType, dir string) ([]key.Key, [][]byte) {
+	ds, err := flatfs.Open(ktype, dir, false)
 	if err != nil {
 		t.Fatalf("Open fail: %v\n", err)
 	}
@@ -231,7 +231,7 @@ func populateDatastore(t *testing.T, keyType key.KeyType, dir string) ([]key.Key
 		blocks = append(blocks, blk)
 
 		k := "X" + base32.StdEncoding.EncodeToString(blk[:8])
-		keys = append(keys, key.NewKeyFromTypeAndString(keyType, k))
+		keys = append(keys, key.NewKeyFromTypeAndString(ktype, k))
 		err := ds.Put(keys[i], blocks[i])
 		if err != nil {
 			t.Fatalf("Put fail: %v\n", err)
@@ -241,8 +241,8 @@ func populateDatastore(t *testing.T, keyType key.KeyType, dir string) ([]key.Key
 	return keys, blocks
 }
 
-func checkKeys(t *testing.T, keyType key.KeyType, dir string, keys []key.Key, blocks [][]byte) {
-	ds, err := flatfs.Open(keyType, dir, false)
+func checkKeys(t *testing.T, ktype key.KeyType, dir string, keys []key.Key, blocks [][]byte) {
+	ds, err := flatfs.Open(ktype, dir, false)
 	if err != nil {
 		t.Fatalf("Open fail: %v\n", err)
 	}
