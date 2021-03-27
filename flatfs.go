@@ -9,6 +9,7 @@
 package flatfs
 
 import (
+	"encoding/base32"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -120,6 +121,8 @@ func init() {
 // write operations to the same key. See the explanation in
 // Put().
 type Datastore struct {
+	keyType key.KeyType
+
 	// atmoic operations should always be used with diskUsage.
 	// Must be first in struct to ensure correct alignment
 	// (see https://golang.org/pkg/sync/atomic/#pkg-note-BUG)
@@ -149,6 +152,17 @@ type Datastore struct {
 	// opMap handles concurrent write operations (put/delete)
 	// to the same key
 	opMap *opMap
+}
+
+func keyTypeSupported(k key.Key) bool {
+	switch k.KeyType() {
+	case key.KeyTypeString:
+		return true
+	case key.KeyTypeBytes:
+		return true
+	default:
+		return false
+	}
 }
 
 type diskUsageValue struct {
@@ -243,7 +257,7 @@ func Create(path string, fun *ShardIdV1) error {
 	}
 }
 
-func Open(path string, syncFiles bool) (*Datastore, error) {
+func Open(keyType key.KeyType, path string, syncFiles bool) (*Datastore, error) {
 	_, err := os.Stat(path)
 	if os.IsNotExist(err) {
 		return nil, ErrDatastoreDoesNotExist
@@ -268,6 +282,7 @@ func Open(path string, syncFiles bool) (*Datastore, error) {
 	}
 
 	fs := &Datastore{
+		keyType:      keyType,
 		path:         path,
 		tempPath:     tempPath,
 		shardStr:     shardId.String(),
@@ -295,12 +310,12 @@ func Open(path string, syncFiles bool) (*Datastore, error) {
 }
 
 // convenience method
-func CreateOrOpen(path string, fun *ShardIdV1, sync bool) (*Datastore, error) {
+func CreateOrOpen(keyType key.KeyType, path string, fun *ShardIdV1, sync bool) (*Datastore, error) {
 	err := Create(path, fun)
 	if err != nil && err != ErrDatastoreExists {
 		return nil, err
 	}
-	return Open(path, sync)
+	return Open(keyType, path, sync)
 }
 
 func (fs *Datastore) ShardStr() string {
@@ -308,12 +323,19 @@ func (fs *Datastore) ShardStr() string {
 }
 
 func (fs *Datastore) encode(k key.Key) (dir, file string) {
-	if k.KeyType() != key.KeyTypeString {
+	var name string
+	switch k.KeyType() {
+	case key.KeyTypeString:
+		// remove initial slash
+		name = k.String()[1:]
+	case key.KeyTypeBytes:
+		// base32 encoding
+		name = base32.StdEncoding.EncodeToString(k.Bytes())
+	default:
 		panic(key.ErrKeyTypeNotSupported)
 	}
-	noslash := k.String()[1:]
-	dir = filepath.Join(fs.path, fs.getDir(noslash))
-	file = filepath.Join(dir, noslash+extension)
+	dir = filepath.Join(fs.path, fs.getDir(name))
+	file = filepath.Join(dir, name+extension)
 	return dir, file
 }
 
@@ -327,7 +349,19 @@ func (fs *Datastore) decode(file string) (k key.Key, ok bool) {
 		return nil, false
 	}
 	name := file[:len(file)-len(extension)]
-	return key.NewStrKey(name), true
+	switch fs.keyType {
+	case key.KeyTypeString:
+		// will add back initial slash
+		return key.NewStrKey(name), true
+	case key.KeyTypeBytes:
+		keyBytes, err := base32.StdEncoding.DecodeString(name)
+		if err != nil {
+			return nil, false
+		}
+		return key.NewBytesKey(keyBytes), true
+	default:
+		panic(key.ErrKeyTypeNotSupported)
+	}
 }
 
 func (fs *Datastore) makeDir(dir string) error {
@@ -403,7 +437,7 @@ func (fs *Datastore) renameAndUpdateDiskUsage(tmpPath, path string) error {
 // concurrent Put and a Delete operation, we cannot guarantee which one
 // will win.
 func (fs *Datastore) Put(k key.Key, value []byte) error {
-	if k.KeyType() != key.KeyTypeString {
+	if !keyTypeSupported(k) {
 		return key.ErrKeyTypeNotSupported
 	}
 	if !keyIsValid(k) {
@@ -425,9 +459,10 @@ func (fs *Datastore) Put(k key.Key, value []byte) error {
 }
 
 func (fs *Datastore) Sync(prefix key.Key) error {
-	if prefix.KeyType() != key.KeyTypeString {
+	if !keyTypeSupported(prefix) {
 		return key.ErrKeyTypeNotSupported
 	}
+
 	fs.shutdownLock.RLock()
 	defer fs.shutdownLock.RUnlock()
 	if fs.shutdown {
@@ -487,7 +522,7 @@ func (fs *Datastore) doWriteOp(oper *op) (done bool, err error) {
 
 func (fs *Datastore) doPut(k key.Key, val []byte) error {
 
-	if k.KeyType() != key.KeyTypeString {
+	if !keyTypeSupported(k) {
 		return key.ErrKeyTypeNotSupported
 	}
 
@@ -589,7 +624,7 @@ func (fs *Datastore) putMany(data map[string][]byte) error {
 	}
 
 	for kstr, value := range data {
-		k := key.NewStrKey(kstr)
+		k := key.NewKeyFromTypeAndString(fs.keyType, kstr)
 		dir, path := fs.encode(k)
 		if err := fs.makeDirNoSync(dir); err != nil {
 			return err
@@ -665,7 +700,7 @@ func (fs *Datastore) putMany(data map[string][]byte) error {
 }
 
 func (fs *Datastore) Get(k key.Key) (value []byte, err error) {
-	if k.KeyType() != key.KeyTypeString {
+	if !keyTypeSupported(k) {
 		return nil, key.ErrKeyTypeNotSupported
 	}
 	// Can't exist in datastore.
@@ -686,7 +721,7 @@ func (fs *Datastore) Get(k key.Key) (value []byte, err error) {
 }
 
 func (fs *Datastore) Has(k key.Key) (exists bool, err error) {
-	if k.KeyType() != key.KeyTypeString {
+	if !keyTypeSupported(k) {
 		return false, key.ErrKeyTypeNotSupported
 	}
 	// Can't exist in datastore.
@@ -706,7 +741,7 @@ func (fs *Datastore) Has(k key.Key) (exists bool, err error) {
 }
 
 func (fs *Datastore) GetSize(k key.Key) (size int, err error) {
-	if k.KeyType() != key.KeyTypeString {
+	if !keyTypeSupported(k) {
 		return -1, key.ErrKeyTypeNotSupported
 	}
 	// Can't exist in datastore.
@@ -729,7 +764,7 @@ func (fs *Datastore) GetSize(k key.Key) (size int, err error) {
 // the Put() explanation about the handling of concurrent write
 // operations to the same key.
 func (fs *Datastore) Delete(k key.Key) error {
-	if k.KeyType() != key.KeyTypeString {
+	if !keyTypeSupported(k) {
 		return key.ErrKeyTypeNotSupported
 	}
 	// Can't exist in datastore.
@@ -754,7 +789,7 @@ func (fs *Datastore) Delete(k key.Key) error {
 // This function always runs within an opLock for the given
 // key, and not concurrently.
 func (fs *Datastore) doDelete(k key.Key) error {
-	if k.KeyType() != key.KeyTypeString {
+	if !keyTypeSupported(k) {
 		return key.ErrKeyTypeNotSupported
 	}
 
@@ -781,23 +816,27 @@ func (fs *Datastore) doDelete(k key.Key) error {
 }
 
 func (fs *Datastore) Query(q query.Query) (query.Results, error) {
-	if q.Prefix == nil {
-		q.Prefix = key.QueryStrKey("/")
-	}
-	if q.Prefix.KeyType() != key.KeyTypeString {
-		return nil, key.ErrKeyTypeNotSupported
-	}
-	prefix := key.Clean(q.Prefix).String()
-	if prefix != "/" {
-		// This datastore can't include keys with multiple components.
-		// Therefore, it's always correct to return an empty result when
-		// the user requests a filter by prefix.
-		log.Warnw(
-			"flatfs was queried with a key prefix but flatfs only supports keys at the root",
-			"prefix", q.Prefix,
-			"query", q,
-		)
-		return query.ResultsWithEntries(q, nil), nil
+	switch fs.keyType {
+	case key.KeyTypeString:
+		if q.Prefix == nil {
+			q.Prefix = key.QueryStrKey("/")
+		} else {
+			prefix := key.Clean(q.Prefix).String()
+			if prefix != "/" {
+				// This datastore can't include keys with multiple components.
+				// Therefore, it's always correct to return an empty result when
+				// the user requests a filter by prefix.
+				log.Warnw(
+					"flatfs was queried with a key prefix but flatfs only supports keys at the root",
+					"prefix", q.Prefix,
+					"query", q,
+				)
+				return query.ResultsWithEntries(q, nil), nil
+			}
+		}
+	case key.KeyTypeBytes:
+	default:
+		panic(key.ErrKeyTypeNotSupported)
 	}
 
 	// Replicates the logic in ResultsWithChan but actually respects calls
@@ -1254,7 +1293,7 @@ func (fs *Datastore) Batch() (datastore.Batch, error) {
 }
 
 func (bt *flatfsBatch) Put(k key.Key, val []byte) error {
-	if k.KeyType() != key.KeyTypeString {
+	if !keyTypeSupported(k) {
 		return key.ErrKeyTypeNotSupported
 	}
 	if !keyIsValid(k) {
@@ -1265,7 +1304,7 @@ func (bt *flatfsBatch) Put(k key.Key, val []byte) error {
 }
 
 func (bt *flatfsBatch) Delete(k key.Key) error {
-	if k.KeyType() != key.KeyTypeString {
+	if !keyTypeSupported(k) {
 		return key.ErrKeyTypeNotSupported
 	}
 	if keyIsValid(k) {
@@ -1280,7 +1319,7 @@ func (bt *flatfsBatch) Commit() error {
 	}
 
 	for k := range bt.deletes {
-		if err := bt.ds.Delete(key.NewStrKey(k)); err != nil {
+		if err := bt.ds.Delete(key.NewKeyFromTypeAndString(bt.ds.keyType, k)); err != nil {
 			return err
 		}
 	}

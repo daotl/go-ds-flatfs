@@ -17,6 +17,8 @@ DAOT Labs's fork of [ipfs/go-ds-flatfs](https://github.com/ipfs/go-ds-flatfs).
 It is _not_ a general-purpose datastore and has several important restrictions.
 See the restrictions section for details.
 
+This fork adds support for bytes-backed keys in addition to original string-backed keys.
+
 ## Lead Maintainer
 
 [Nex](https://github.com/NexZhu)

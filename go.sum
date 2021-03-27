@@ -4,6 +4,10 @@ github.com/alexbrainman/goissue34681 v0.0.0-20191006012335-3fc7a47baff5 h1:iW0a5
 github.com/alexbrainman/goissue34681 v0.0.0-20191006012335-3fc7a47baff5/go.mod h1:Y2QMoi1vgtOIfc+6DhrMOGkLoGzqSV2rKp4Sm+opsyA=
 github.com/daotl/go-datastore v0.4.5 h1:Mg5ECD1krfbv6dj826Z8hoUupJ1P1xCmlIGXBwb0vZ8=
 github.com/daotl/go-datastore v0.4.5/go.mod h1:9BclJPZKWn6VoOT1tGHgSuBbGOEwciNfXFRtqKjXwIo=
+github.com/daotl/go-datastore v0.4.6 h1:RJW6CAybbcXNoCuWRh6RH0q/G1LeG3VBqZj418x8ar0=
+github.com/daotl/go-datastore v0.4.6/go.mod h1:9BclJPZKWn6VoOT1tGHgSuBbGOEwciNfXFRtqKjXwIo=
+github.com/daotl/go-datastore v0.4.7 h1:Dnyv/cx2syLuMkizZpHvWv4pmOPdExXdSplM/b505UU=
+github.com/daotl/go-datastore v0.4.7/go.mod h1:9BclJPZKWn6VoOT1tGHgSuBbGOEwciNfXFRtqKjXwIo=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

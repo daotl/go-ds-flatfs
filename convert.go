@@ -53,12 +53,12 @@ func DowngradeV1toV0(path string) error {
 }
 
 func Move(oldPath string, newPath string, out io.Writer) error {
-	oldDS, err := Open(oldPath, false)
+	oldDS, err := Open(key.KeyTypeString, oldPath, false)
 	if err != nil {
 		return fmt.Errorf("%s: %v", oldPath, err)
 	}
 	oldDS.deactivate()
-	newDS, err := Open(newPath, false)
+	newDS, err := Open(key.KeyTypeString, newPath, false)
 	if err != nil {
 		return fmt.Errorf("%s: %v", newPath, err)
 	}
