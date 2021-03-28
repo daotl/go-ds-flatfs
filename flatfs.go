@@ -257,7 +257,7 @@ func Create(path string, fun *ShardIdV1) error {
 	}
 }
 
-func Open(keyType key.KeyType, path string, syncFiles bool) (*Datastore, error) {
+func Open(path string, keyType key.KeyType, syncFiles bool) (*Datastore, error) {
 	_, err := os.Stat(path)
 	if os.IsNotExist(err) {
 		return nil, ErrDatastoreDoesNotExist
@@ -310,12 +310,12 @@ func Open(keyType key.KeyType, path string, syncFiles bool) (*Datastore, error) 
 }
 
 // convenience method
-func CreateOrOpen(keyType key.KeyType, path string, fun *ShardIdV1, sync bool) (*Datastore, error) {
+func CreateOrOpen(path string, keyType key.KeyType, fun *ShardIdV1, sync bool) (*Datastore, error) {
 	err := Create(path, fun)
 	if err != nil && err != ErrDatastoreExists {
 		return nil, err
 	}
-	return Open(keyType, path, sync)
+	return Open(path, keyType, sync)
 }
 
 func (fs *Datastore) ShardStr() string {

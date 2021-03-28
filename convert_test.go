@@ -216,7 +216,7 @@ func rmEmptyDatastore(t *testing.T, dir string) {
 }
 
 func populateDatastore(t *testing.T, ktype key.KeyType, dir string) ([]key.Key, [][]byte) {
-	ds, err := flatfs.Open(ktype, dir, false)
+	ds, err := flatfs.Open(dir, ktype, false)
 	if err != nil {
 		t.Fatalf("Open fail: %v\n", err)
 	}
@@ -242,7 +242,7 @@ func populateDatastore(t *testing.T, ktype key.KeyType, dir string) ([]key.Key, 
 }
 
 func checkKeys(t *testing.T, ktype key.KeyType, dir string, keys []key.Key, blocks [][]byte) {
-	ds, err := flatfs.Open(ktype, dir, false)
+	ds, err := flatfs.Open(dir, ktype, false)
 	if err != nil {
 		t.Fatalf("Open fail: %v\n", err)
 	}
