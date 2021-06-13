@@ -23,12 +23,12 @@ import (
 	"syscall"
 	"time"
 
+	logging "github.com/daotl/go-log/v2"
+	"github.com/jbenet/goprocess"
+
 	"github.com/daotl/go-datastore"
 	"github.com/daotl/go-datastore/key"
 	"github.com/daotl/go-datastore/query"
-	"github.com/jbenet/goprocess"
-
-	logging "github.com/ipfs/go-log"
 )
 
 var log = logging.Logger("flatfs")
