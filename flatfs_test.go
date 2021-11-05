@@ -6,6 +6,7 @@
 package flatfs_test
 
 import (
+	"context"
 	"encoding/base32"
 	"encoding/json"
 	"fmt"
@@ -28,6 +29,8 @@ import (
 
 	"github.com/daotl/go-ds-flatfs"
 )
+
+var ctxBg = context.Background()
 
 func checkTemp(t *testing.T, dir string) {
 	tempDir, err := os.Open(filepath.Join(dir, ".temp"))
@@ -85,18 +88,18 @@ func testBatch(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 
 	batches := make([]datastore.Batch, 9)
 	for i := range batches {
-		batch, err := fs.Batch()
+		batch, err := fs.Batch(ctxBg)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		batches[i] = batch
 
-		err = batch.Put(key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte("foo"))
+		err = batch.Put(ctxBg, key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte("foo"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = batch.Put(key.NewKeyFromTypeAndString(ktype, fmt.Sprintf("Q%dX", i)),
+		err = batch.Put(ctxBg, key.NewKeyFromTypeAndString(ktype, fmt.Sprintf("Q%dX", i)),
 			[]byte(fmt.Sprintf("bar%d", i)))
 		if err != nil {
 			t.Fatal(err)
@@ -109,7 +112,7 @@ func testBatch(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 		batch := batch
 		go func() {
 			defer wg.Done()
-			err := batch.Commit()
+			err := batch.Commit(ctxBg)
 			if err != nil {
 				t.Error(err)
 			}
@@ -117,7 +120,7 @@ func testBatch(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	}
 
 	check := func(k, expected string) {
-		actual, err := fs.Get(key.NewKeyFromTypeAndString(ktype, k))
+		actual, err := fs.Get(ctxBg, key.NewKeyFromTypeAndString(ktype, k))
 		if err != nil {
 			t.Fatalf("get for key %s, error: %s", k, err)
 		}
@@ -150,13 +153,13 @@ func testPut(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	}
 	defer fs.Close()
 
-	err = fs.Put(key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte("foobar"))
+	err = fs.Put(ctxBg, key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte("foobar"))
 	if err != nil {
 		t.Fatalf("Put fail: %v\n", err)
 	}
 
 	if ktype == key.KeyTypeString {
-		err := fs.Put(key.NewKeyFromTypeAndString(ktype, "foo"), []byte("nonono"))
+		err := fs.Put(ctxBg, key.NewKeyFromTypeAndString(ktype, "foo"), []byte("nonono"))
 		if err == nil {
 			t.Fatalf("did not expect to put a lowercase key")
 		}
@@ -180,12 +183,12 @@ func testGet(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	defer fs.Close()
 
 	const input = "foobar"
-	err = fs.Put(key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte(input))
+	err = fs.Put(ctxBg, key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte(input))
 	if err != nil {
 		t.Fatalf("Put fail: %v\n", err)
 	}
 
-	buf, err := fs.Get(key.NewKeyFromTypeAndString(ktype, "QUUX"))
+	buf, err := fs.Get(ctxBg, key.NewKeyFromTypeAndString(ktype, "QUUX"))
 	if err != nil {
 		t.Fatalf("Get failed: %v", err)
 	}
@@ -193,7 +196,7 @@ func testGet(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 		t.Fatalf("Get gave wrong content: %q != %q", g, e)
 	}
 
-	_, err = fs.Get(key.NewKeyFromTypeAndString(ktype, "/FOO/BAR"))
+	_, err = fs.Get(ctxBg, key.NewKeyFromTypeAndString(ktype, "/FOO/BAR"))
 	if err != datastore.ErrNotFound {
 		t.Fatalf("expected ErrNotFound, got %s", err)
 	}
@@ -219,17 +222,17 @@ func testPutOverwrite(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 		loser  = "foobar"
 		winner = "xyzzy"
 	)
-	err = fs.Put(key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte(loser))
+	err = fs.Put(ctxBg, key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte(loser))
 	if err != nil {
 		t.Fatalf("Put fail: %v\n", err)
 	}
 
-	err = fs.Put(key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte(winner))
+	err = fs.Put(ctxBg, key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte(winner))
 	if err != nil {
 		t.Fatalf("Put fail: %v\n", err)
 	}
 
-	data, err := fs.Get(key.NewKeyFromTypeAndString(ktype, "QUUX"))
+	data, err := fs.Get(ctxBg, key.NewKeyFromTypeAndString(ktype, "QUUX"))
 	if err != nil {
 		t.Fatalf("Get failed: %v", err)
 	}
@@ -254,7 +257,7 @@ func testGetNotFoundError(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) 
 	}
 	defer fs.Close()
 
-	_, err = fs.Get(key.NewKeyFromTypeAndString(ktype, "QUUX"))
+	_, err = fs.Get(ctxBg, key.NewKeyFromTypeAndString(ktype, "QUUX"))
 	if g, e := err, datastore.ErrNotFound; g != e {
 		t.Fatalf("expected ErrNotFound, got: %v\n", g)
 	}
@@ -283,7 +286,7 @@ func testStorage(p *params, t *testing.T) {
 	}
 	defer fs.Close()
 
-	err = fs.Put(key.NewStrKey(p.key), []byte("foobar"))
+	err = fs.Put(ctxBg, key.NewStrKey(p.key), []byte("foobar"))
 	if err != nil {
 		t.Fatalf("Put fail: %v\n", err)
 	}
@@ -377,7 +380,7 @@ func testHasNotFound(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	}
 	defer fs.Close()
 
-	found, err := fs.Has(key.NewKeyFromTypeAndString(ktype, "QUUX"))
+	found, err := fs.Has(ctxBg, key.NewKeyFromTypeAndString(ktype, "QUUX"))
 	if err != nil {
 		t.Fatalf("Has fail: %v\n", err)
 	}
@@ -402,12 +405,12 @@ func testHasFound(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	}
 	defer fs.Close()
 
-	err = fs.Put(key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte("foobar"))
+	err = fs.Put(ctxBg, key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte("foobar"))
 	if err != nil {
 		t.Fatalf("Put fail: %v\n", err)
 	}
 
-	found, err := fs.Has(key.NewKeyFromTypeAndString(ktype, "QUUX"))
+	found, err := fs.Has(ctxBg, key.NewKeyFromTypeAndString(ktype, "QUUX"))
 	if err != nil {
 		t.Fatalf("Has fail: %v\n", err)
 	}
@@ -432,7 +435,7 @@ func testGetSizeFound(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	}
 	defer fs.Close()
 
-	_, err = fs.GetSize(key.NewKeyFromTypeAndString(ktype, "QUUX"))
+	_, err = fs.GetSize(ctxBg, key.NewKeyFromTypeAndString(ktype, "QUUX"))
 	if err != datastore.ErrNotFound {
 		t.Fatalf("GetSize should have returned ErrNotFound, got: %v\n", err)
 	}
@@ -454,12 +457,12 @@ func testGetSizeNotFound(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	}
 	defer fs.Close()
 
-	err = fs.Put(key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte("foobar"))
+	err = fs.Put(ctxBg, key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte("foobar"))
 	if err != nil {
 		t.Fatalf("Put fail: %v\n", err)
 	}
 
-	size, err := fs.GetSize(key.NewKeyFromTypeAndString(ktype, "QUUX"))
+	size, err := fs.GetSize(ctxBg, key.NewKeyFromTypeAndString(ktype, "QUUX"))
 	if err != nil {
 		t.Fatalf("GetSize failed with: %v\n", err)
 	}
@@ -484,7 +487,7 @@ func testDeleteNotFound(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	}
 	defer fs.Close()
 
-	err = fs.Delete(key.NewKeyFromTypeAndString(ktype, "QUUX"))
+	err = fs.Delete(ctxBg, key.NewKeyFromTypeAndString(ktype, "QUUX"))
 	if err != nil {
 		t.Fatalf("expected nil, got: %v\n", err)
 	}
@@ -506,18 +509,18 @@ func testDeleteFound(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	}
 	defer fs.Close()
 
-	err = fs.Put(key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte("foobar"))
+	err = fs.Put(ctxBg, key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte("foobar"))
 	if err != nil {
 		t.Fatalf("Put fail: %v\n", err)
 	}
 
-	err = fs.Delete(key.NewKeyFromTypeAndString(ktype, "QUUX"))
+	err = fs.Delete(ctxBg, key.NewKeyFromTypeAndString(ktype, "QUUX"))
 	if err != nil {
 		t.Fatalf("Delete fail: %v\n", err)
 	}
 
 	// check that it's gone
-	_, err = fs.Get(key.NewKeyFromTypeAndString(ktype, "QUUX"))
+	_, err = fs.Get(ctxBg, key.NewKeyFromTypeAndString(ktype, "QUUX"))
 	if g, e := err, datastore.ErrNotFound; g != e {
 		t.Fatalf("expected Get after Delete to give ErrNotFound, got: %v\n", g)
 	}
@@ -540,12 +543,12 @@ func testQuerySimple(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	defer fs.Close()
 
 	myKey := key.NewKeyFromTypeAndString(ktype, "QUUX")
-	err = fs.Put(myKey, []byte("foobar"))
+	err = fs.Put(ctxBg, myKey, []byte("foobar"))
 	if err != nil {
 		t.Fatalf("Put fail: %v\n", err)
 	}
 
-	res, err := fs.Query(query.Query{KeysOnly: true})
+	res, err := fs.Query(ctxBg, query.Query{KeysOnly: true})
 	if err != nil {
 		t.Fatalf("Query fail: %v\n", err)
 	}
@@ -593,7 +596,7 @@ func testDiskUsage(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	for i := 0; i < count; i++ {
 		k := key.NewKeyFromTypeAndString(ktype, fmt.Sprintf("TEST-%d", i))
 		v := []byte("10bytes---")
-		err = fs.Put(k, v)
+		err = fs.Put(ctxBg, k, v)
 		if err != nil {
 			t.Fatalf("Put fail: %v\n", err)
 		}
@@ -608,7 +611,7 @@ func testDiskUsage(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 
 	for i := 0; i < count; i++ {
 		k := key.NewKeyFromTypeAndString(ktype, fmt.Sprintf("TEST-%d", i))
-		err = fs.Delete(k)
+		err = fs.Delete(ctxBg, k)
 		if err != nil {
 			t.Fatalf("Delete fail: %v\n", err)
 		}
@@ -718,7 +721,7 @@ func testDiskUsageDoubleCount(ktype key.KeyType, dirFunc mkShardFunc, t *testing
 		defer wg.Done()
 		for i := 0; i < count; i++ {
 			v := []byte("10bytes---")
-			err := fs.Put(testKey, v)
+			err := fs.Put(ctxBg, testKey, v)
 			if err != nil {
 				t.Errorf("Put fail: %v\n", err)
 			}
@@ -728,7 +731,7 @@ func testDiskUsageDoubleCount(ktype key.KeyType, dirFunc mkShardFunc, t *testing
 	del := func() {
 		defer wg.Done()
 		for i := 0; i < count; i++ {
-			err := fs.Delete(testKey)
+			err := fs.Delete(ctxBg, testKey)
 			if err != nil && !strings.Contains(err.Error(), "key not found") {
 				t.Errorf("Delete fail: %v\n", err)
 			}
@@ -757,7 +760,7 @@ func testDiskUsageDoubleCount(ktype key.KeyType, dirFunc mkShardFunc, t *testing
 	wg.Wait()
 
 	du3, _ := fs.DiskUsage()
-	has, err := fs.Has(testKey)
+	has, err := fs.Has(ctxBg, testKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -784,7 +787,7 @@ func testDiskUsageBatch(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	}
 	defer fs.Close()
 
-	fsBatch, err := fs.Batch()
+	fsBatch, err := fs.Batch(ctxBg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -799,7 +802,7 @@ func testDiskUsageBatch(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 
 	put := func() {
 		for i := 0; i < count; i++ {
-			err := fsBatch.Put(testKeys[i], []byte("10bytes---"))
+			err := fsBatch.Put(ctxBg, testKeys[i], []byte("10bytes---"))
 			if err != nil {
 				t.Error(err)
 			}
@@ -807,7 +810,7 @@ func testDiskUsageBatch(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	}
 	commit := func() {
 		defer wg.Done()
-		err := fsBatch.Commit()
+		err := fsBatch.Commit(ctxBg)
 		if err != nil {
 			t.Errorf("Batch Put fail: %v\n", err)
 		}
@@ -816,7 +819,7 @@ func testDiskUsageBatch(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 	del := func() {
 		defer wg.Done()
 		for _, k := range testKeys {
-			err := fs.Delete(k)
+			err := fs.Delete(ctxBg, k)
 			if err != nil && !strings.Contains(err.Error(), "key not found") {
 				t.Errorf("Delete fail: %v\n", err)
 			}
@@ -853,7 +856,7 @@ func testDiskUsageBatch(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 		t.Fatal(err)
 	}
 	// Now query how many keys we have
-	results, err := fs.Query(query.Query{
+	results, err := fs.Query(ctxBg, query.Query{
 		KeysOnly: true,
 	})
 	if err != nil {
@@ -892,7 +895,7 @@ func testDiskUsageEstimation(ktype key.KeyType, dirFunc mkShardFunc, t *testing.
 	for i := 0; i < count; i++ {
 		k := key.NewKeyFromTypeAndString(ktype, fmt.Sprintf("%d-TEST-%d", i, i))
 		v := make([]byte, 1000)
-		err = fs.Put(k, v)
+		err = fs.Put(ctxBg, k, v)
 		if err != nil {
 			t.Fatalf("Put fail: %v\n", err)
 		}
@@ -1013,14 +1016,14 @@ func testClose(ktype key.KeyType, dirFunc mkShardFunc, t *testing.T) {
 		t.Fatalf("New fail: %v\n", err)
 	}
 
-	err = fs.Put(key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte("foobar"))
+	err = fs.Put(ctxBg, key.NewKeyFromTypeAndString(ktype, "QUUX"), []byte("foobar"))
 	if err != nil {
 		t.Fatalf("Put fail: %v\n", err)
 	}
 
 	fs.Close()
 
-	err = fs.Put(key.NewKeyFromTypeAndString(ktype, "QAAX"), []byte("foobar"))
+	err = fs.Put(ctxBg, key.NewKeyFromTypeAndString(ktype, "QAAX"), []byte("foobar"))
 	if err == nil {
 		t.Fatal("expected put on closed datastore to fail")
 	}
@@ -1114,9 +1117,9 @@ func testNoCluster(t *testing.T, ktype key.KeyType) {
 		switch ktype {
 		case key.KeyTypeString:
 			k := "CIQ" + base32.StdEncoding.EncodeToString(blk[:10])
-			err = fs.Put(key.NewStrKey(k), blk)
+			err = fs.Put(ctxBg, key.NewStrKey(k), blk)
 		case key.KeyTypeBytes:
-			err = fs.Put(key.NewBytesKey(blk[:10]), blk)
+			err = fs.Put(ctxBg, key.NewBytesKey(blk[:10]), blk)
 		}
 
 		if err != nil {
@@ -1183,7 +1186,7 @@ func BenchmarkConsecutivePut(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		err := fs.Put(keys[i], blocks[i])
+		err := fs.Put(ctxBg, keys[i], blocks[i])
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -1215,18 +1218,18 @@ func BenchmarkBatchedPut(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; {
-		batch, err := fs.Batch()
+		batch, err := fs.Batch(ctxBg)
 		if err != nil {
 			b.Fatal(err)
 		}
 
 		for n := i; i-n < 512 && i < b.N; i++ {
-			err := batch.Put(keys[i], blocks[i])
+			err := batch.Put(ctxBg, keys[i], blocks[i])
 			if err != nil {
 				b.Fatal(err)
 			}
 		}
-		err = batch.Commit()
+		err = batch.Commit(ctxBg)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -1245,7 +1248,7 @@ func testQueryLeak(t *testing.T, ktype key.KeyType) {
 	defer fs.Close()
 
 	for i := 0; i < 1000; i++ {
-		err = fs.Put(key.NewKeyFromTypeAndString(ktype, fmt.Sprint(i)), []byte("foobar"))
+		err = fs.Put(ctxBg, key.NewKeyFromTypeAndString(ktype, fmt.Sprint(i)), []byte("foobar"))
 		if err != nil {
 			t.Fatalf("Put fail: %v\n", err)
 		}
@@ -1253,7 +1256,7 @@ func testQueryLeak(t *testing.T, ktype key.KeyType) {
 
 	before := runtime.NumGoroutine()
 	for i := 0; i < 200; i++ {
-		res, err := fs.Query(query.Query{KeysOnly: true})
+		res, err := fs.Query(ctxBg, query.Query{KeysOnly: true})
 		if err != nil {
 			t.Errorf("Query fail: %v\n", err)
 		}

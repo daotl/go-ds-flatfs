@@ -9,6 +9,7 @@
 package flatfs
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -64,7 +65,7 @@ func Move(oldPath string, newPath string, out io.Writer) error {
 	}
 	newDS.deactivate()
 
-	res, err := oldDS.Query(query.Query{KeysOnly: true})
+	res, err := oldDS.Query(context.Background(), query.Query{KeysOnly: true})
 	if err != nil {
 		return err
 	}

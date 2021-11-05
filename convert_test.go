@@ -7,6 +7,7 @@ package flatfs_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/base32"
 	"io/ioutil"
 	"math/rand"
@@ -232,7 +233,7 @@ func populateDatastore(t *testing.T, ktype key.KeyType, dir string) ([]key.Key, 
 
 		k := "X" + base32.StdEncoding.EncodeToString(blk[:8])
 		keys = append(keys, key.NewKeyFromTypeAndString(ktype, k))
-		err := ds.Put(keys[i], blocks[i])
+		err := ds.Put(context.Background(), keys[i], blocks[i])
 		if err != nil {
 			t.Fatalf("Put fail: %v\n", err)
 		}
@@ -249,7 +250,7 @@ func checkKeys(t *testing.T, ktype key.KeyType, dir string, keys []key.Key, bloc
 	defer ds.Close()
 
 	for i, key := range keys {
-		data, err := ds.Get(key)
+		data, err := ds.Get(context.Background(), key)
 		if err != nil {
 			t.Fatalf("Get fail: %v\n", err)
 		}

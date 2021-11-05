@@ -9,6 +9,7 @@
 package flatfs
 
 import (
+	"context"
 	"encoding/base32"
 	"encoding/json"
 	"errors"
@@ -436,7 +437,7 @@ func (fs *Datastore) renameAndUpdateDiskUsage(tmpPath, path string) error {
 // one arrived slightly later than the other. In the case of a
 // concurrent Put and a Delete operation, we cannot guarantee which one
 // will win.
-func (fs *Datastore) Put(k key.Key, value []byte) error {
+func (fs *Datastore) Put(ctx context.Context, k key.Key, value []byte) error {
 	if !keyTypeSupported(k) {
 		return key.ErrKeyTypeNotSupported
 	}
@@ -458,7 +459,7 @@ func (fs *Datastore) Put(k key.Key, value []byte) error {
 	return err
 }
 
-func (fs *Datastore) Sync(prefix key.Key) error {
+func (fs *Datastore) Sync(ctx context.Context, prefix key.Key) error {
 	if !keyTypeSupported(prefix) {
 		return key.ErrKeyTypeNotSupported
 	}
@@ -699,7 +700,7 @@ func (fs *Datastore) putMany(data map[string][]byte) error {
 	return nil
 }
 
-func (fs *Datastore) Get(k key.Key) (value []byte, err error) {
+func (fs *Datastore) Get(ctx context.Context, k key.Key) (value []byte, err error) {
 	if !keyTypeSupported(k) {
 		return nil, key.ErrKeyTypeNotSupported
 	}
@@ -720,7 +721,7 @@ func (fs *Datastore) Get(k key.Key) (value []byte, err error) {
 	return data, nil
 }
 
-func (fs *Datastore) Has(k key.Key) (exists bool, err error) {
+func (fs *Datastore) Has(ctx context.Context, k key.Key) (exists bool, err error) {
 	if !keyTypeSupported(k) {
 		return false, key.ErrKeyTypeNotSupported
 	}
@@ -740,7 +741,7 @@ func (fs *Datastore) Has(k key.Key) (exists bool, err error) {
 	}
 }
 
-func (fs *Datastore) GetSize(k key.Key) (size int, err error) {
+func (fs *Datastore) GetSize(ctx context.Context, k key.Key) (size int, err error) {
 	if !keyTypeSupported(k) {
 		return -1, key.ErrKeyTypeNotSupported
 	}
@@ -763,7 +764,7 @@ func (fs *Datastore) GetSize(k key.Key) (size int, err error) {
 // Delete removes a key/value from the Datastore. Please read
 // the Put() explanation about the handling of concurrent write
 // operations to the same key.
-func (fs *Datastore) Delete(k key.Key) error {
+func (fs *Datastore) Delete(ctx context.Context, k key.Key) error {
 	if !keyTypeSupported(k) {
 		return key.ErrKeyTypeNotSupported
 	}
@@ -815,7 +816,7 @@ func (fs *Datastore) doDelete(k key.Key) error {
 	return err
 }
 
-func (fs *Datastore) Query(q query.Query) (query.Results, error) {
+func (fs *Datastore) Query(ctx context.Context, q query.Query) (query.Results, error) {
 	switch fs.keyType {
 	case key.KeyTypeString:
 		if q.Prefix == nil {
@@ -1284,7 +1285,7 @@ type flatfsBatch struct {
 	ds *Datastore
 }
 
-func (fs *Datastore) Batch() (datastore.Batch, error) {
+func (fs *Datastore) Batch(ctx context.Context) (datastore.Batch, error) {
 	return &flatfsBatch{
 		puts:    make(map[string][]byte),
 		deletes: make(map[string]struct{}),
@@ -1292,7 +1293,7 @@ func (fs *Datastore) Batch() (datastore.Batch, error) {
 	}, nil
 }
 
-func (bt *flatfsBatch) Put(k key.Key, val []byte) error {
+func (bt *flatfsBatch) Put(ctx context.Context, k key.Key, val []byte) error {
 	if !keyTypeSupported(k) {
 		return key.ErrKeyTypeNotSupported
 	}
@@ -1303,7 +1304,7 @@ func (bt *flatfsBatch) Put(k key.Key, val []byte) error {
 	return nil
 }
 
-func (bt *flatfsBatch) Delete(k key.Key) error {
+func (bt *flatfsBatch) Delete(ctx context.Context, k key.Key) error {
 	if !keyTypeSupported(k) {
 		return key.ErrKeyTypeNotSupported
 	}
@@ -1313,13 +1314,13 @@ func (bt *flatfsBatch) Delete(k key.Key) error {
 	return nil
 }
 
-func (bt *flatfsBatch) Commit() error {
+func (bt *flatfsBatch) Commit(ctx context.Context) error {
 	if err := bt.ds.putMany(bt.puts); err != nil {
 		return err
 	}
 
 	for k := range bt.deletes {
-		if err := bt.ds.Delete(key.NewKeyFromTypeAndString(bt.ds.keyType, k)); err != nil {
+		if err := bt.ds.Delete(ctx, key.NewKeyFromTypeAndString(bt.ds.keyType, k)); err != nil {
 			return err
 		}
 	}
